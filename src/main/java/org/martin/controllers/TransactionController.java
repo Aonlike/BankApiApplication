@@ -1,6 +1,4 @@
 package org.martin.controllers;
-
-import org.martin.data.models.Transaction;
 import org.martin.dtos.requests.AirtimeRequest;
 import org.martin.dtos.requests.TransferRequest;
 import org.martin.dtos.responses.TransactionResponse;

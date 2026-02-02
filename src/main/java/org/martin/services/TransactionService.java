@@ -8,13 +8,17 @@ import org.martin.data.repositories.CustomerRepository;
 import org.martin.data.repositories.TransactionRepository;
 import org.martin.dtos.requests.AirtimeRequest;
 import org.martin.dtos.requests.TransferRequest;
+import org.martin.dtos.responses.TransactionResponse;
+import org.martin.mapper.TransactionMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.util.List;
 
+@Service
 public class TransactionService {
 
     @Autowired
@@ -26,11 +30,12 @@ public class TransactionService {
     @Autowired
     private CustomerRepository customerRepository;
 
-    public Transaction processTransfer(TransferRequest  request) {
+
+    public TransactionResponse transfer(TransferRequest request) {
         Account account = accountRepository.findByAccountNumber(request.getSourceAccount()).orElseThrow(() -> new RuntimeException("Source account not found"));
         Customer customer = customerRepository.findById(account.getCustomerId()).orElseThrow(() -> new RuntimeException("Customer not found"));
 
-       double discountPercent = calculateDiscount(customer,request.getSourceAccount(),request.getAmount());
+        double discountPercent = calculateDiscount(customer,request.getSourceAccount(),request.getAmount());
         double discountAmount = request.getAmount() * (discountPercent / 100);
         double finalAmount = request.getAmount() - discountAmount;
 
@@ -42,7 +47,8 @@ public class TransactionService {
         transaction.setTransactionType("TRANSFER");
         transaction.setTransactionDate(LocalDateTime.now());
 
-        return transactionRepository.save(transaction);
+        Transaction saved = transactionRepository.save(transaction);
+        return TransactionMapper.mapModelToResponse(saved, "Transfer successful"); // Added Mapper
     }
 
     private double calculateDiscount(Customer customer, String accountNumber, double amount) {
@@ -63,16 +69,19 @@ public class TransactionService {
         }
         return 0.0;
     }
-private long getTransactionCount(String accountNumber) {
+
+    private long getTransactionCount(String accountNumber) {
         LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0);
         List<Transaction> transactions = transactionRepository.findBySourceAccountAndTransactionDateAfter(accountNumber, startOfMonth);
         return transactions.size();
     }
-public List<Transaction> getHistory(String accountNumber) {
-        return transactionRepository.findBySourceAccount(accountNumber);
-}
 
-public Transaction processAirtime(AirtimeRequest request){
+    public List<Transaction> getHistory(String accountNumber) {
+        return transactionRepository.findBySourceAccount(accountNumber);
+    }
+
+
+    public TransactionResponse processAirtime(AirtimeRequest request){
         Transaction transaction = new Transaction();
         transaction.setSourceAccount(request.getSourceAccount());
         transaction.setOriginalAmount(request.getAmount());
@@ -80,7 +89,7 @@ public Transaction processAirtime(AirtimeRequest request){
         transaction.setTransactionType("AIRTIME");
         transaction.setTransactionDate(LocalDateTime.now());
 
-        return transactionRepository.save(transaction);
-}
-
+        Transaction savedTransaction = transactionRepository.save(transaction);
+        return TransactionMapper.mapModelToResponse(savedTransaction, "Airtime purchase successful"); // Added Mapper
+    }
 }
